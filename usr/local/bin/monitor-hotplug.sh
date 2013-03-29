@@ -12,9 +12,8 @@ export DISPLAY=":$displaynum"
 
 uid=$(ck-list-sessions | awk 'BEGIN { unix_user = ""; } /^Session/ { unix_user = ""; } /unix-user =/ { gsub(/'\''/,"",$3); unix_user = $3; } /x11-display = '\'$display\''/ { print unix_user; exit (0); }')
 if [ -n "$uid" ]; then
-	user=$(getent passwd $uid | cut -d: -f1)
-	userhome=$(getent passwd $user | cut -d: -f6)
-	export XAUTHORITY=$userhome/.Xauthority
+	# from https://wiki.archlinux.org/index.php/Acpid#Laptop_Monitor_Power_Off
+	export XAUTHORITY=$(ps -C Xorg -f --no-header | sed -n 's/.*-auth //; s/ -[^ ].*//; p')
 else
   echo "unable to find an X session"
   exit 1
