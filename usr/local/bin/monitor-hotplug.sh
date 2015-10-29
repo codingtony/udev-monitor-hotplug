@@ -7,8 +7,8 @@ DEVICES=$(find /sys/class/drm/*/status)
 #inspired by /etc/acpd/lid.sh and the function it sources
 
 displaynum=`ls /tmp/.X11-unix/* | sed s#/tmp/.X11-unix/X##`
-display=":$displaynum"
-export DISPLAY=":$displaynum"
+display=":$displaynum.0"
+export DISPLAY=":$displaynum.0"
 
 uid=$(ck-list-sessions | awk 'BEGIN { unix_user = ""; } /^Session/ { unix_user = ""; } /unix-user =/ { gsub(/'\''/,"",$3); unix_user = $3; } /x11-display = '\'$display\''/ { print unix_user; exit (0); }')
 if [ -n "$uid" ]; then
