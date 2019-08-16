@@ -16,8 +16,9 @@ I was inspired by http://stackoverflow.com/questions/5469828/how-to-create-a-cal
 
 ## Debuging
   * sudo service udev stop
-  * sudo udevd --debug 2>&1 | tee /tmp/udev.log
+  * sudo udevd --debug 2>&1 | tee /tmp/udev.log  OR `udevadm monitor` to monitor the events of plug-in/out
   * check what's happening when you plug/unplug your monitor
+  * check if the `ENV{HOTPLUG}` variable that's being used in the rules file is available in your enviornment. See: https://unix.stackexchange.com/questions/208660/what-env-variables-can-be-set-in-udev-rules Some systems do not have it.
 
 
 ## License

@@ -14,7 +14,7 @@ export DISPLAY=":$displaynum.0"
 export XAUTHORITY=$(ps -C Xorg -f --no-header | sed -n 's/.*-auth //; s/ -[^ ].*//; p')
 
 
-#this while loop declare the $HDMI1 $VGA1 $LVDS1 and others if they are plugged in
+#this while loop declare the $HDMI1 $VGA1 $LVDS1 $DP1 and others if they are plugged in
 while read l
 do
   dir=$(dirname $l);
@@ -54,6 +54,12 @@ elif [ -z "$HDMI1" -a ! -z "$VGA1" ]; then
   xrandr --output LVDS1 --off
   xrandr --output HDMI1 --off
   xrandr --output VGA1 --mode 1920x1080 --primary
+elif [ -z "$HDMI1" -a -z "$VGA1" -a ! -z "$DP1" ]; then
+  echo "DP1 is plugged in"
+  xrandr --output LVDS1 --off
+  xrandr --output HDMI1 --off
+  xrandr --output VGA1 --off
+  xrandr --output DP-1 --auto --primary --pos 0x0 --output eDP-1 --auto --pos 2560x360
 else
   echo "No external monitors are plugged in"
   xrandr --output LVDS1 --off
