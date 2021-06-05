@@ -1,12 +1,15 @@
 #!/bin/bash
 
-if [[ ! -z $1 ]]; then
+if [[ -n $1 ]]; then
     # debug
     set -x
 fi
 
 #Adapt this script to your needs.
-DEVICES=$(find /sys/class/drm/*/status)
+DEVICES=(/sys/class/drm/*/status)
+DEVICES+=(/tmp/JACK)
+DEVICES+=(/proc/acpi/button/lid/*/state)
+DEVICES+=(/sys/class/power_supply/AC/online)
 
 #inspired by /etc/acpd/lid.sh and the function it sources
 _display=$(find /tmp/.X11-unix/* | sed s#/tmp/.X11-unix/X##)
@@ -17,10 +20,21 @@ _xauthority=$(ps -C Xorg -f --no-header | sed -n 's/.*-auth //; s/ -[^ ].*//; p'
 export XAUTHORITY=${_xauthority}
 
 #this while loop declare the $HDMI1 $VGA1 $LVDS1 and others if they are plugged in
-while read -r l; do
-    DIR=$(dirname "${l}");
-    STATUS=$(cat "${l}");
-    DEV=$(echo "${DIR}" | cut -d- -f 2-);
+
+for DEVPATH in "${DEVICES[@]}"; do
+    if [[ ${DEVPATH} == *"JACK"* ]]; then
+        DIR=$(basename "${DEVPATH}");
+        STATUS=$(cat "${DEVPATH}");
+        DEV="${DIR}";
+    elif [[ ${DEVPATH} =~ LID|AC ]]; then
+        DIR=$(basename "$(dirname "${DEVPATH}")");
+        STATUS=$(cat "${DEVPATH}");
+        DEV="${DIR}";
+    else
+        DIR=$(dirname "${DEVPATH}");
+        STATUS=$(cat "${DEVPATH}");
+        DEV=$(echo "${DIR}" | cut -d- -f 2-);
+    fi
     ISHDMI=$(echo "${DEV}" | grep -i 'HDMI')
 
     if [[ -n "${ISHDMI}" ]]; then
@@ -33,9 +47,14 @@ while read -r l; do
     if [[ "connected" == "${STATUS}" ]]; then
         echo "${DEV} connected"
         declare "${DEV}=yes";
+    elif [[ "${STATUS}" == "state:      open" ]]; then
+        echo "${DEV} connected"
+        declare "${DEV}=yes";
+    elif [[ "${STATUS}" == 1 ]]; then
+        echo "${DEV} connected"
+        declare "${DEV}=yes";
     fi
-done <<< "${DEVICES}"
-
+done
 
 if [[ -n "${HDMI1}" && -n "${VGA1}" ]]; then
     echo "HDMI1 and VGA1 are plugged in"
