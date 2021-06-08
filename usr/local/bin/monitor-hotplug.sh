@@ -5,6 +5,8 @@ if [[ -n $1 ]]; then
     set -x
 fi
 
+function display_by_name() { xrandr | grep -o -P "(?i)($1.+?[0-9])"; }
+
 #Adapt this script to your needs.
 DEVICES=(/sys/class/drm/*/status)
 DEVICES+=(/tmp/JACK)
@@ -58,22 +60,21 @@ done
 
 if [[ -n "${HDMI1}" && -n "${VGA1}" ]]; then
     echo "HDMI1 and VGA1 are plugged in"
-    xrandr --output LVDS1 --off
-    xrandr --output VGA1 --mode 1920x1080 --noprimary
-    xrandr --output HDMI1 --mode 1920x1080 --right-of VGA1 --primary
+    xrandr --output "$(display_by_name VGA)" --mode 1920x1080 --noprimary
+    xrandr --output "$(display_by_name HDMI)" --mode 1920x1080 --right-of "$(display_by_name VGA)" --primary
 elif [[ -n "${HDMI1}" && -z "${VGA1}" ]]; then
-    echo "HDMI1 is plugged in, but not VGA1"
-    xrandr --output LVDS1 --off
-    xrandr --output VGA1 --off
-    xrandr --output HDMI1 --mode 1920x1080 --primary
+    echo "HDMI1 is plugged in, but not VGA"
+    xrandr --output "$(display_by_name LVDS)" --off
+    xrandr --output "$(display_by_name VGA)" --off
+    xrandr --output "$(display_by_name HDMI)" --mode 1920x1080 --primary
 elif [[ -z "${HDMI1}" && -n "${VGA1}" ]]; then
-    echo "VGA1 is plugged in, but not HDMI1"
-    xrandr --output LVDS1 --off
-    xrandr --output HDMI1 --off
-    xrandr --output VGA1 --mode 1920x1080 --primary
+    echo "VGA1 is plugged in, but not HDMI"
+    xrandr --output "$(display_by_name LVDS)" --off
+    xrandr --output "$(display_by_name HDMI)" --off
+    xrandr --output "$(display_by_name VGA)" --mode 1920x1080 --primary
 else
     echo "No external monitors are plugged in"
-    xrandr --output LVDS1 --off
-    xrandr --output HDMI1 --off
-    xrandr --output LVDS1 --mode 1366x768 --primary
+    xrandr --output "$(display_by_name HDMI)" --off
+    xrandr --output "$(display_by_name HDMI)" --off
+    xrandr --output "$(display_by_name LVDS)" --mode 1366x768 --primary
 fi
