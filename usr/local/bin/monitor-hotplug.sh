@@ -5,6 +5,14 @@ if [[ -n $1 ]]; then
     set -x
 fi
 
+USER=$(id -nu 1000)
+
+SETTINGS="/home/${USER}/.config/udev_hotplug/settings.sh"
+
+if [[ -f "${SETTINGS}" ]]; then
+    source "${SETTINGS}"
+fi
+
 function display_by_name() { xrandr | grep -o -P "(?i)($1.+?[0-9])"; }
 
 #Adapt this script to your needs.
@@ -21,7 +29,21 @@ export DISPLAY=":${_display}.0"
 _xauthority=$(ps -C Xorg -f --no-header | sed -n 's/.*-auth //; s/ -[^ ].*//; p')
 export XAUTHORITY=${_xauthority}
 
-#this while loop declare the $HDMI1 $VGA1 $LVDS1 and others if they are plugged in
+# this while loop declare connected devices, exemple:
+    # ${HDMI1}
+    # ${VGA1}
+    # ${LID0}
+    # ${LVDS1} to me, is aways connected, use ${LID0}
+    # ${DP1}
+    # ${AC}
+    # ${JACK}
+
+# All other display will be declared too
+
+# The variable 'is_usb_dev' will be defined in settings:
+    # ${is_usb_dev}
+# if this variable is not necessary, in settings, turn ATENTION_TO_USB_HID to:
+    # ATENTION_TO_USB_HID=true
 
 for DEVPATH in "${DEVICES[@]}"; do
     if [[ ${DEVPATH} == *"JACK"* ]]; then
@@ -47,34 +69,53 @@ for DEVPATH in "${DEVICES[@]}"; do
     fi
 
     if [[ "connected" == "${STATUS}" ]]; then
-        echo "${DEV} connected"
+        logger "${DEV} connected"
         declare "${DEV}=yes";
     elif [[ "${STATUS}" == "state:      open" ]]; then
-        echo "${DEV} connected"
+        logger "${DEV} connected"
         declare "${DEV}=yes";
     elif [[ "${STATUS}" == 1 ]]; then
-        echo "${DEV} connected"
+        logger "${DEV} connected"
         declare "${DEV}=yes";
     fi
 done
 
 if [[ -n "${HDMI1}" && -n "${VGA1}" ]]; then
-    echo "HDMI1 and VGA1 are plugged in"
-    xrandr --output "$(display_by_name VGA)" --mode 1920x1080 --noprimary
-    xrandr --output "$(display_by_name HDMI)" --mode 1920x1080 --right-of "$(display_by_name VGA)" --primary
-elif [[ -n "${HDMI1}" && -z "${VGA1}" ]]; then
-    echo "HDMI1 is plugged in, but not VGA"
-    xrandr --output "$(display_by_name LVDS)" --off
+    logger "HDMI1 and VGA1 are plugged in"
+    # if usb device is connected
+    if [[ -n ${is_usb_dev} ]]; then
+        xrandr --output "$(display_by_name VGA)" --mode 1920x1080 --primary
+        xrandr --output "$(display_by_name HDMI)" --off
+    else
+        xrandr --output "$(display_by_name HDMI)" --mode 1920x1080 --primary
+        xrandr --output "$(display_by_name VGA)" --off
+    fi
+elif [[ -z "${VGA1}" && -n "${HDMI1}" ]]; then
+    logger "HDMI1 is plugged in, but not VGA"
     xrandr --output "$(display_by_name VGA)" --off
     xrandr --output "$(display_by_name HDMI)" --mode 1920x1080 --primary
-elif [[ -z "${HDMI1}" && -n "${VGA1}" ]]; then
-    echo "VGA1 is plugged in, but not HDMI"
-    xrandr --output "$(display_by_name LVDS)" --off
+elif [[ -n "${VGA1}" && -z "${HDMI1}" ]]; then
+    logger "VGA1 is plugged in, but not HDMI"
     xrandr --output "$(display_by_name HDMI)" --off
     xrandr --output "$(display_by_name VGA)" --mode 1920x1080 --primary
+    # if LID closed LVDS will be disabled
+    if [[ -z "${LID0}" ]]; then
+        xrandr --output "$(display_by_name LVDS)" --off
+    else
+        xrandr --output "$(display_by_name LVDS)" --mode 1920x1080 --below "$(display_by_name VGA)"
+    fi
 else
-    echo "No external monitors are plugged in"
-    xrandr --output "$(display_by_name HDMI)" --off
-    xrandr --output "$(display_by_name HDMI)" --off
+    logger "No external monitors are plugged in"
     xrandr --output "$(display_by_name LVDS)" --mode 1366x768 --primary
+    xrandr --output "$(display_by_name VGA)" --off
+    xrandr --output "$(display_by_name HDMI)" --off
+    xrandr --output "$(display_by_name DP)" --off
+
+    # LID closed and External Power Disconected
+    if [[ -z "${LID0}" ]]; then
+        if [[ -z "${AC}"  ]]; then
+            logger "Going to Sleep!"
+            systemctl suspend -i
+        fi
+    fi
 fi
